@@ -9,14 +9,23 @@ function Comments(props) {
 
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (showComments) {
-      fetch(`api/comments/${eventId}`)
-        .then((response) => response.json())
-        .then((data) => {
-          setComments(data.comment);
+      fetch(`/api/comments/${eventId}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
         })
+        .then((data) => {
+          setComments(data.comments);
+        })
+        .catch((error) => {
+          setError(error.message);
+        });
     }
   }, [showComments, eventId]);
 
@@ -25,16 +34,26 @@ function Comments(props) {
   }
 
   function addCommentHandler(commentData) {
-    // send data to API
-    fetch('/api/comments/' + eventId, {
+    fetch(`/api/comments/${eventId}`, {
       method: 'POST',
       body: JSON.stringify(commentData),
       headers: {
         'Content-Type': 'application/json'
       }
     })
-      .then((response) => response.json())
-      .then((data) => console.log(data))
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setComments((prevComments) => [data.comment, ...prevComments]);
+        //improves the user experience by showing the new comment right away without waiting for the next fetch.
+      })
+      .catch((error) => {
+        console.error('There has been a problem with your fetch operation:', error);
+      });
   }
 
   return (
@@ -43,6 +62,7 @@ function Comments(props) {
         {showComments ? 'Hide' : 'Show'} Comments
       </button>
       {showComments && <NewComment onAddComment={addCommentHandler} />}
+      {showComments && error && <p>Error: {error}</p>}
       {showComments && <CommentList items={comments} />}
     </section>
   );
